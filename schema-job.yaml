@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apply-schema-job
+  namespace: test
+spec:
+  template:
+    spec:
+      containers:
+      - name: apply-schema
+        image: postgres:16
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres.test-minimal-cluster.credentials.postgresql.acid.zalan.do
+              key: password
+        command: ["sh", "-c", "psql -h test-minimal-cluster.test.svc.cluster.local -U postgres -d postgres -f /schema/schema.sql"]
+        volumeMounts:
+        - name: schema-config
+          mountPath: /schema
+      restartPolicy: OnFailure
+      volumes:
+      - name: schema-config
+        configMap:
+          name: schema-config
+

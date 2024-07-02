@@ -1,0 +1,26 @@
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: test-minimal-cluster
+  namespace: test
+spec:
+  teamId: "acid"
+  volume:
+    size: 5Gi
+    storageClass: local-storage
+  numberOfInstances: 2
+  users:
+    zalando:
+    - superuser
+    - createdb
+  databases:
+    foo: zalando
+  postgresql:
+    version: "16"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "500Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"

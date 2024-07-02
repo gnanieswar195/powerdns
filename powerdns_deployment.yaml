@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/name: pdns-master
+    app.kubernetes.io/part-of: pdns
+    app.kubernetes.io/component: master
+  name: pdns-master
+  namespace: test
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pdns-master
+      app.kubernetes.io/part-of: pdns
+      app.kubernetes.io/component: master
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: pdns-master
+        app.kubernetes.io/part-of: pdns
+        app.kubernetes.io/component: master
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/pdns-master: "true"
+      containers:
+      - image: gnanieswar195/prod-geoip:1.0
+        imagePullPolicy: IfNotPresent
+        name: pdns-master
+        env:
+        - name: PDNS_gpgsql_host
+          value: "pgpool" 
+        - name: PDNS_gpgsql_port
+          value: "9999"
+        - name: PDNS_gpgsql_user
+          valueFrom:
+            secretKeyRef:
+              name: postgres.test-minimal-cluster.credentials.postgresql.acid.zalan.do
+              key: username
+        - name: PDNS_gpgsql_password
+          valueFrom:
+            secretKeyRef:
+              name: postgres.test-minimal-cluster.credentials.postgresql.acid.zalan.do
+              key: password        
+        - name: PDNS_gpgsql_dbname
+          value: "postgres"
+        - name: PDNS_version_string
+          value: "anonymous"
+        - name: PDNS_api
+          value: "yes"
+        - name: PDNS_api_key
+          value: "bXktc2VjcmV0LXB3shshshsshjks"
+        - name: PDNS_webserver
+          value: "yes"
+        - name: PDNS_webserver_address
+          value: "0.0.0.0"
+        - name: PDNS_webserver_allow_from
+          value: "0.0.0.0/0"
+        - name: PDNS_webserver_password
+          valueFrom:
+            secretKeyRef:
+              name: master-pdns-secret
+              key: webserver
+        - name: PDNS_default_ttl
+          value: "1500"
+        - name: PDNS_allow_axfr_ips
+          value: "10.0.0.2 10.0.0.3"
+        - name: PDNS_only_notify
+          value: "10.0.0.2 10.0.0.3"
+        - name: PDNS_dnsupdate
+          value: "yes"
+        - name: PDNS_enable_lua_records
+          value: "yes"
+        - name: PDNS_allow_dnsupdate_from
+          value: "0.0.0.0/0"
+        - name: PDNS_local_address
+          value: "0.0.0.0"
+        - name: PDNS_local_port
+          value: "53"            
+        resources:
+          limits:
+            cpu: 300m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
+        ports:
+        - name: dns-udp
+          containerPort: 53
+          protocol: UDP
+        - name: dns-tcp
+          containerPort: 53
+          protocol: TCP
+        - containerPort: 8081
+          protocol: TCP
+      dnsPolicy: ClusterFirstWithHostNet
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: master-pdns-secret
+    app.kubernetes.io/part-of: pdns
+    app.kubernetes.io/component: master
+  name: master-pdns-secret
+  namespace: test
+data:
+  apikey: MTIzNDU2Nzg5MA==
+  webserver: MDk4NzY1NDMyMQ==
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: master-api-pdns
+    app.kubernetes.io/part-of: pdns
+    app.kubernetes.io/component: master
+  name: master-api-pdns
+  namespace: test
+spec:
+  type: NodePort
+  ports:
+  - name: api
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+    nodePort: 32076
+  selector:
+    app.kubernetes.io/name: pdns-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: master-dns-pdns
+    app.kubernetes.io/part-of: pdns
+    app.kubernetes.io/component: master
+  name: master-dns-pdns
+  namespace: test
+spec:
+  type: NodePort
+  ports:
+  - name: dns-udp
+    port: 53
+    targetPort: 53
+    protocol: UDP
+    nodePort: 32075
+  - name: dns-tcp
+    port: 53
+    targetPort: 53
+    protocol: TCP
+    nodePort: 32075
+  selector:
+    app.kubernetes.io/name: pdns-master
