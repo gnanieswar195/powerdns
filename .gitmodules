@@ -1,0 +1,6 @@
+[submodule "docker-pdns"]
+	path = docker-pdns
+	url = https://github.com/pschiffe/docker-pdns.git
+[submodule "postgres-operator"]
+	path = postgres-operator
+	url = https://github.com/zalando/postgres-operator.git
